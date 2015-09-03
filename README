@@ -1,0 +1,53 @@
+
+
+UNFOG
+Uncovering Nanopore's Fingerprints of Genomes
+
+A fingerprint-based method for species identification using nanopore event space
+data.
+Inspired by methods for song identification implemented by Shazam and the
+open-source Dejavu.
+
+UNFOG first builds a database of genomes converted into fingerprints from input
+fasta files, then compares nanopore fast5 output similarly converted into
+fingerprints.
+After mapping, the program prints out lists of genomes by numbers of reads
+mapping and percentages of reads mapping.
+
+Written in python 2.7.
+
+Dependencies that must be installed:
+- h5py
+- numpy
+- scipy
+- matplotlib
+(Also uses the following from the Python standard library: __future__, re,
+operator, os, math, glob, collections, cPickle, gzip, hashlib, multiprocessing,
+sys, getopt)
+
+Settings and input can be modified through flags:
+--input_dir #a directory containing fast5 files of interest
+--output_dir #a directory in which to store output
+--genomes #a list of genomes for reference
+--overlap #True/False to allow overlap between windows
+--outlier_thresh #an outlier threshold for events (current recommendation for bacteria 110)
+--nfft #Fast Fourier Transform block size (current recommendation for bact 128)
+--noverlap #size of overlaps between FFT blocks (current recommendation for bact 64)
+--fs #sample rate for the FFT (current recommendation 2)
+--create_db #True/False to create the database of fingerprints
+--num_processes #number of processes to use when creating a database
+
+~ Quick example run ~~
+with a sample mix of five bacterial species,
+using a database of two genomes (stored on hippo) for comparison:
+
+time python UNFOG.py --input_dir /scratchLocal/cmlab/abm237/fast5_data/mgrg/ --output_dir /scratchLocal/cmlab/abm237/unfog/output/mgrg_short_test --genomes "/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/escherichia.coli.k12.m1655/escherichia.coli.k12.m1655.fasta,/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/entero/sequence.fasta" --overlap True --outlier_thresh 90 --noverlap 64 --nfft 128 --fs 1 --unique False --create_db True --num_processes 2
+
+Output:
+[('/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/escherichia.coli.k12.m1655/escherichia.coli.k12.m1655.fasta', 12.88571428571428), ('/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/entero/sequence.fasta', 3.1142857142857148)]
+[80.53571428571426, 19.464285714285722]
+
+real 1m36.008s
+user 2m27.241s
+sys 0m1.764s
+
