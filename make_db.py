@@ -14,7 +14,7 @@ import gzip
 from fingerprint import (comp, fingerprint_events)
 
 
-def genomes_to_fingerprint_db(genome_files, model, fs=2, nfft=128, noverlap=64, only_genomes=False, outputdir=""):
+def genomes_to_fingerprint_db(genome_files, model, fs, nfft, noverlap, only_genomes, min_peak_amplitude, peak_fan, max_hash_time, outputdir=""):
     """ converts genomes in a list of fasta genome files to fingerprints, returns a dict of reference genomes and associated fingerprint values """
     #TODO: Implement a true database, not a dict of dicts which was used for being able to quickly test the Shazam concept.
     fingerprint_database = defaultdict(dict)
@@ -23,6 +23,7 @@ def genomes_to_fingerprint_db(genome_files, model, fs=2, nfft=128, noverlap=64, 
     comp_model_dict = dict([(a[0], a[1]) for a in model[1]])
     nt_bases = set('ATCG')
     genome_ind = 0
+    genome_files = list(set(genome_files)) #ensures unique entries in file list
     for g in genome_files:
         genome_ind +=1
         #if genome_ind%100 == 0:
@@ -53,32 +54,39 @@ def genomes_to_fingerprint_db(genome_files, model, fs=2, nfft=128, noverlap=64, 
                     kmer.append(template_model_dict[seq[i:i+5]])
                     kmer_comp.append(comp_model_dict[comp(seq[i:i+5])])
         kmer_comp.reverse()  # reverse in order to keep same offset as the template
+        """if g == '/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/entero/sequence.fasta':
+            fname = 'enterobacter'
+            genome_event_file = open(outputdir+fname+"_genome_reverse_events","w")
+            genome_event_file.write(','.join([str(k) for k in kmer_comp]))
+            genome_event_file.close()
+            break""" 
         #print str(kmer[0]) + ': kmer example'
-        fp = fingerprint_events(kmer, plot_spectro_name="fp_events_%s.png"%(fname), plot_name="fp_peaks_%s.png"%(fname), fs=fs, nfft=nfft, noverlap=noverlap)
+        fp = fingerprint_events(kmer, plot_spectro_name="fp_events_%s.png"%(fname), plot_name="fp_peaks_%s.png"%(fname), fs=fs, nfft=nfft, noverlap=noverlap, min_peak_amplitude=min_peak_amplitude, peak_fan=peak_fan, max_hash_time=max_hash_time)
         g_fp = {key:value for (key, value) in fp}
-        fp_comp = fingerprint_events(kmer_comp, plot_spectro_name="fp_events_comp_%s.png"%(fname), plot_name="fp_peaks_comp_%s.png"%(fname), fs=fs, nfft=nfft, noverlap=noverlap)
+        fp_comp = fingerprint_events(kmer_comp, plot_spectro_name="fp_events_comp_%s.png"%(fname), plot_name="fp_peaks_comp_%s.png"%(fname), fs=fs, nfft=nfft, noverlap=noverlap, min_peak_amplitude=min_peak_amplitude, peak_fan=peak_fan, max_hash_time=max_hash_time)
         g_fp_comp = {key:value for (key, value) in fp_comp}
+        #if g == '/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/entero/sequence.fasta':
         if only_genomes:
+            #fname = 'enterobacter'
             pickle.dump(g_fp, open(outputdir+fname+"_genome_forward.p", "wb"))
             pickle.dump(g_fp_comp, open(outputdir+fname+"_genome_complement.p", "wb"))
         else: 
             fingerprint_database[fname] = g_fp
-            #fingerprint_database = {fname: g_fp_comp} 
             revcomp_fingerprint_database[fname] = g_fp_comp
     return (fingerprint_database, revcomp_fingerprint_database)
 
 
-def mp_db_builder(genomes, nprocs, hmm_model, fs, nfft, noverlap, only_genomes, outputdir):
+def mp_db_builder(genomes, nprocs, hmm_model, fs, nfft, noverlap, only_genomes, min_peak_amplitude, peak_fan, max_hash_time, outputdir):
     """ distributes list of genomes across processes then adds resulting fingerprints to database """
-    def worker(genomes, out_q, hmm_model=hmm_model, fs=fs, nfft=nfft, noverlap=noverlap, only_genomes=only_genomes, outputdir=outputdir):
-        outtup  = genomes_to_fingerprint_db(genomes, hmm_model, fs, nfft, noverlap, only_genomes, outputdir)
+    def worker(genomes, out_q, hmm_model=hmm_model, fs=fs, nfft=nfft, noverlap=noverlap, only_genomes=only_genomes, min_peak_amplitude=min_peak_amplitude, peak_fan=peak_fan, max_hash_time=max_hash_time, outputdir=outputdir):
+        outtup  = genomes_to_fingerprint_db(genomes, hmm_model, fs, nfft, noverlap, only_genomes, min_peak_amplitude, peak_fan, max_hash_time, outputdir)
         out_q.put(outtup)
         
     nproc_min = min(nprocs, len(genomes))
     fp_dict = defaultdict(dict)
     revcomp_fp_dict = defaultdict(dict)
     if nproc_min == 1:
-        tmp_dict_f, tmp_dict_r = genomes_to_fingerprint_db(genomes, hmm_model, fs, nfft, noverlap, only_genomes, outputdir)
+        tmp_dict_f, tmp_dict_r = genomes_to_fingerprint_db(genomes, hmm_model, fs, nfft, noverlap, only_genomes, min_peak_amplitude, peak_fan, min_peak_amplitude, outputdir)
         fp_dict.update(tmp_dict_f)
         revcomp_fp_dict.update(tmp_dict_r)
         
@@ -128,7 +136,7 @@ def run_db_builder(hf, db_builder_input, output_dir):
     genome_dir = output_dir + "genomes/"
     if not os.path.exists(genome_dir):
         os.makedirs(genome_dir)
-    genome_files_list, num_processes, fs, nfft, noverlap, only_genomes = db_builder_input
-    fingerprint_db, revcomp_fingerprint_db = mp_db_builder(genome_files_list, num_processes, hmm_model, fs, nfft, noverlap, only_genomes, genome_dir)
+    genome_files_list, num_processes, fs, nfft, noverlap, only_genomes, min_peak_amplitude, peak_fan, max_hash_time = db_builder_input
+    fingerprint_db, revcomp_fingerprint_db = mp_db_builder(genome_files_list, num_processes, hmm_model, fs, nfft, noverlap, only_genomes, min_peak_amplitude, peak_fan, max_hash_time, genome_dir)
     return(fingerprint_db, revcomp_fingerprint_db)
 
