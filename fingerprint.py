@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Fingerprinting function and accessories
+Fingerprinting function and accessories, code adapted from https://github.com/worldveil/dejavu/blob/master/dejavu/fingerprint.py
 """
 
 from __future__ import division
@@ -17,9 +17,9 @@ import hashlib
 
 
 # Define fingerprinting function
-def fingerprint_events(events, plot_spectro=False, plot_spectro_name="fp_events.png", plot=False, plot_name="fp_peaks.png", fs=2, nfft=128, noverlap=64, outputdir=""):
+def fingerprint_events(events, plot_spectro=False, plot_spectro_name="fp_events.png", plot=False, plot_name="fp_peaks.png", fs=2, nfft=128, noverlap=64, min_peak_amplitude=10, peak_fan=15, max_hash_time=200, outputdir=""):
     fingerprint = []
-    spectrum, freqs, t = mlab.specgram(events, Fs=fs, NFFT=nfft, noverlap=noverlap)  #, NFFT=wsize, Fs=Fs, window=mlab.window_hanning, noverlap=int(wsize * wratio))
+    spectrum, freqs, event_t = mlab.specgram(events, Fs=fs, NFFT=nfft, noverlap=noverlap, detrend=mlab.detrend_none)  #, NFFT=wsize, Fs=Fs, window=mlab.window_hanning, noverlap=int(wsize * wratio))
 
     # TODO: There are two different ways to plot the spectrogram here. The first doesn't have the peaks plotted, while the second does. The x-axis needs to be fixed from "Time" to events and the indexing for the second plotting method is not linear.
 
@@ -27,12 +27,12 @@ def fingerprint_events(events, plot_spectro=False, plot_spectro_name="fp_events.
     # calculate the bin limits in time (x dir)
     # note that there are n+1 fence posts
     try:
-        dt = t[1] - t[0]
+        d_event_t = event_t[1] - event_t[0]
     except IndexError:
-        dt = 0
+        d_event_t = 0
         #print("t length 1")
-    t_edge = np.empty(len(t) + 1)
-    t_edge[:-1] = t - dt / 2.
+    t_edge = np.empty(len(event_t) + 1)
+    t_edge[:-1] = event_t - d_event_t / 2.
     # however, due to the way the spectrogram is calculates, the first and last bins 
     # a bit different:
     t_edge[0] = 0
@@ -47,16 +47,29 @@ def fingerprint_events(events, plot_spectro=False, plot_spectro_name="fp_events.
     # calculate the period bin limits, omit the zero frequency bin
     p_edge = 1. / freq_edge[1:]
 
-    if plot_spectro:
+    #fft_fig = plt.figure()
+    #spectrum = spectrum[(freqs > 2)]
+    #freqs = freqs[(freqs > 2)]
+    """extent = 0, max(event_t), freqs[0], freqs[-1]
+    ax = plt.subplot()
+    ax.imshow(spectrum, extent=extent)
+    ax.set_xlabel('Event')
+    ax.set_ylabel('Frequency')
+    ax.set_title('Spectrogram')
+    #plt.gca().invert_yaxis()
+    
+    plt.savefig(outputdir + "/freq_by_event_t_" + str(fs) + "_" + str(nfft) + "_" + str(noverlap))
+    """
+    #if plot_spectro:
         # we'll plot both
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        ax1.pcolormesh(t_edge, freq_edge, spectrum)
-        fig.savefig(outputdir + "/" + plot_spectro_name)
+    #    fig = plt.figure()
+    #    ax1 = fig.add_subplot(111)
+    #    ax1.pcolormesh(t_edge, freq_edge, spectrum)
+    #    fig.savefig(outputdir + "/" + plot_spectro_name)
 
     # Now that spectrum is calculated, need to extract peaks
     struct = generate_binary_structure(2, 1)
-    neighborhood = iterate_structure(struct, 7)
+    neighborhood = iterate_structure(struct, 5) #TEMP 7
     arr2D = spectrum
     local_max = maximum_filter(arr2D, footprint=neighborhood) == arr2D
     background = (arr2D == 0)
@@ -69,8 +82,7 @@ def fingerprint_events(events, plot_spectro=False, plot_spectro_name="fp_events.
     # filter peaks
     amps = amps.flatten()
     peaks = zip(i, j, amps)
-    amp_min = 10
-    peaks_filtered = [x for x in peaks if x[2] > amp_min] # freq, time, amp
+    peaks_filtered = [x for x in peaks if x[2] > min_peak_amplitude] # freq, time, amp
     # get indices for frequency and time
     frequency_idx = [x[1] for x in peaks_filtered]
     time_idx = [x[0] for x in peaks_filtered]
@@ -88,7 +100,7 @@ def fingerprint_events(events, plot_spectro=False, plot_spectro_name="fp_events.
 
     local_maxima = zip(frequency_idx, time_idx)
 
-    return generate_hashes(local_maxima, fan_value=15)
+    return generate_hashes(local_maxima, peak_fan, max_hash_time) #15 originally, 40 in combination with max hash time 400 was working well for enterobacter
 
 
 def comp(seq):
@@ -98,15 +110,15 @@ def comp(seq):
 
 
 # Hashing function
-def generate_hashes(peaks, fan_value=15):
+def generate_hashes(peaks, fan_value, max_hash_time): #degree of pairing between fingerprints and neighbours 
     """
     Hash list structure:
     sha1_hash[0:20] time_offset
     [(e05b341a9b77a51fd26, 32), ... ]
     """
     MIN_HASH_TIME_DELTA = 0
-    MAX_HASH_TIME_DELTA = 200
-    FINGERPRINT_REDUCTION = 40
+    MAX_HASH_TIME_DELTA = max_hash_time #200 thresholds on how close fingerprints can be in sequence of events in order to be paired
+    FINGERPRINT_REDUCTION = 40 #number of bits to discard from front of SHA1 hash (20 in dejavu) - this broke everything
     peaks.sort(key=itemgetter(1))
     for i in range(len(peaks)):
         for j in range(1, fan_value):
