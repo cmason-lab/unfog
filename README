@@ -30,12 +30,15 @@ Settings and input can be modified through flags:
 --output_dir #a directory in which to store output
 --genomes #a list of genomes for reference
 --overlap #True/False to allow overlap between windows
---outlier_thresh #an outlier threshold for events (current recommendation for bacteria 110)
---nfft #Fast Fourier Transform block size (current recommendation for bact 128)
---noverlap #size of overlaps between FFT blocks (current recommendation for bact 64)
---fs #sample rate for the FFT (current recommendation 2)
+--outlier_thresh #an outlier threshold for events (currently deprecated)
+--nfft #Fast Fourier Transform block size (current recommendation 128)
+--noverlap #size of overlaps between FFT blocks (current recommendation 64)
+--fs #sample rate for the FFT (current recommendation 50)
 --create_db #True/False to create the database of fingerprints
 --num_processes #number of processes to use when creating a database
+--min_peak_amplitude #for extracting peaks from FFT spectrograms (current recommendation 20)
+--peak_fan #number of connected peaks to attempt to match (current recommendation 15)
+--max_hash_time #max separation between two joined peaks (current recommendation 300)
 
 ~ Quick example run ~~
 with a sample mix of five bacterial species,
