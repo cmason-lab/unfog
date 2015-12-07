@@ -40,17 +40,3 @@ Settings and input can be modified through flags:
 --peak_fan #number of connected peaks to attempt to match (current recommendation 15)
 --max_hash_time #max separation between two joined peaks (current recommendation 300)
 
-~ Quick example run ~~
-with a sample mix of five bacterial species,
-using a database of two genomes (stored on hippo) for comparison:
-
-time python UNFOG.py --input_dir /scratchLocal/cmlab/abm237/fast5_data/mgrg/ --output_dir /scratchLocal/cmlab/abm237/unfog/output/mgrg_short_test --genomes "/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/escherichia.coli.k12.m1655/escherichia.coli.k12.m1655.fasta,/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/entero/sequence.fasta" --overlap True --outlier_thresh 90 --noverlap 64 --nfft 128 --fs 1 --unique False --create_db True --num_processes 2
-
-Output:
-[('/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/escherichia.coli.k12.m1655/escherichia.coli.k12.m1655.fasta', 12.88571428571428), ('/zenodotus/masonlab/noa2019_scratch/nanopore/alignment/genomes/entero/sequence.fasta', 3.1142857142857148)]
-[80.53571428571426, 19.464285714285722]
-
-real 1m36.008s
-user 2m27.241s
-sys 0m1.764s
-
