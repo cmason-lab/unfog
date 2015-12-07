@@ -8,6 +8,7 @@ from __future__ import division
 
 from collections import Counter
 import matplotlib as mpl
+import numpy as np
 
 
 def increment_dict_counts(in_dict, update_dict):
@@ -30,24 +31,25 @@ def find_matches(samples, geno_db, unique):
     * makes dict of offset differences for each genome by number of corresponding matches
     * returns the genome(s) with the highest number of matches for any particular offset difference  
     """
-    # TODO: Also report back the genome location (not in 5-mer scale)
     mapper = {}
-    matches = []
+    matches = {}
     for hash, offset in samples:
         mapper[hash] = offset
     for h in mapper.keys():
         for g in geno_db:
             if h in geno_db[g]:
                 offset = geno_db[g][h]
-                #print(offset)
-                matches.append((g, offset - mapper[h])) #this doesn't take into account length of sample at all, and what are reasonable distances between samples in terms of absolute genomic positions of matches
-    #print(matches)
+                if g not in matches:
+                    matches[g] = [] 
+                matches[g].append((offset - mapper[h], offset, mapper[h])) 
     diff_counter = {}
     largest = 0
     largest_count = 0
     geno_id = []
-    for tup in matches:
-        gid, diff = tup
+    for gid in matches:
+      for tup in matches[gid]:
+        diff_exact, offset, fan_time = tup
+        diff = round(diff_exact/200) #round after exact matching to reference but before attempting to find consistent offsets on both strands
         if diff not in diff_counter:
             diff_counter[diff] = {}
         if gid not in diff_counter[diff]:
@@ -59,11 +61,7 @@ def find_matches(samples, geno_db, unique):
             geno_id = [gid]
         elif diff_counter[diff][gid] == largest_count:
             geno_id.append(gid)
-    if len(geno_id) > 1: #added this Sep 4, actually made things worse for unique, no change for non unique for mgrg short test
-        ordered_geno = Counter(geno_id).most_common()
-        geno_id = [x[0] for x in ordered_geno if x[1] == ordered_geno[0][1]]
-        #print (geno_id, largest_count)
-    if unique and len(geno_id) >1: #TODO: figure out how to return best of possible matches
+    if unique and len(geno_id) >1: 
         return ([], -1, {})
     return (geno_id, largest_count, diff_counter)
 
@@ -82,7 +80,7 @@ def find_overlap_fp(diff_counter, diff_counter_comp):
     geno_id = []
     for o in offset_overlap:
         diff_overlap[o] = increment_dict_counts(diff_counter[o], diff_counter_comp[o])
-        for g in diff_overlap[o]: #TODO change so overlaps only count if same genome  
+        for g in diff_overlap[o]: 
             if diff_overlap[o][g] > largest_count:
                 largest_count = diff_overlap[o][g]
                 largest_offset = o
