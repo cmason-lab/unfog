@@ -11,7 +11,7 @@ import glob
 from collections import defaultdict
 import gzip
 
-from fingerprint_150924 import (comp, fingerprint_events)
+from fingerprint import (comp, fingerprint_events)
 
 def list_to_dict(li):  
     dct = {}  
