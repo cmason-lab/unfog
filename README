@@ -14,6 +14,7 @@ fingerprints.
 After mapping, the program prints out lists of genomes by numbers of reads
 mapping and percentages of reads mapping.
 
+*UNDER DEVELOPMENT*
 Written in python 2.7.
 
 Dependencies that must be installed:
