@@ -11,9 +11,9 @@ Angela M Yu, 6/15/2015 - 7/3/2015, Alexa BR McIntyre, 9/1/2015 -
 
 from __future__ import division
 
-from fingerprint_150924 import fingerprint_events
+from fingerprint import fingerprint_events
 from make_db import run_db_builder
-from match_fp_150924 import (find_matches, find_overlap_fp)
+from match_fp import (find_matches, find_overlap_fp)
 from find_hairpin import define_strands
 
 import h5py
